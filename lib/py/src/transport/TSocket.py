@@ -22,6 +22,7 @@ import logging
 import os
 import socket
 import sys
+import socks
 
 from .TTransport import TTransportBase, TTransportException, TServerTransportBase
 
@@ -50,7 +51,8 @@ class TSocketBase(TTransportBase):
 class TSocket(TSocketBase):
     """Socket implementation of TTransport base."""
 
-    def __init__(self, host='localhost', port=9090, unix_socket=None, socket_family=socket.AF_UNSPEC):
+    def __init__(self, host='localhost', port=9090, unix_socket=None, proxy_host=None, proxy_post=None,
+                 socket_family=socket.AF_UNSPEC):
         """Initialize a TSocket
 
         @param host(str)  The host to connect to.
@@ -65,6 +67,8 @@ class TSocket(TSocketBase):
         self._unix_socket = unix_socket
         self._timeout = None
         self._socket_family = socket_family
+        self.proxy_host = proxy_host
+        self.proxy_post = proxy_post
 
     def setHandle(self, h):
         self.handle = h
@@ -82,7 +86,12 @@ class TSocket(TSocketBase):
             self.handle.settimeout(self._timeout)
 
     def _do_open(self, family, socktype):
-        return socket.socket(family, socktype)
+        if self.proxy_host is None or self.proxy_host is None:
+            return socket.socket(family, socktype)
+        else:
+            proxy_socket = socks.socksocket(family, socktype)
+            proxy_socket.setproxy(proxy_type=socks.SOCKS5, addr=self.proxy_host, port=self.proxy_post)
+            return proxy_socket
 
     @property
     def _address(self):
